@@ -5,7 +5,7 @@ extends Node
 
 const PORT := 5006
 
-@onready var viewport: SubViewport = $"../Drone/CameraViewport"
+@onready var viewport: Viewport = get_viewport()  # root viewport, not SubViewport
 
 var server := TCPServer.new()
 var client: StreamPeerTCP = null

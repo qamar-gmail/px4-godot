@@ -1,7 +1,6 @@
-[gd_scene load_steps=9 format=3 uid="uid://drone_world"]
+[gd_scene load_steps=8 format=3 uid="uid://drone_world"]
 
 [ext_resource type="Script" path="res://scripts/drone_controller.gd" id="1_ctrl"]
-[ext_resource type="Script" path="res://scripts/camera_streamer.gd" id="2_stream"]
 [ext_resource type="Script" path="res://scripts/viewport_streamer.gd" id="3_vstream"]
 
 [sub_resource type="Environment" id="1_env"]
@@ -143,22 +142,9 @@ position = Vector3(0, 0, 0.1)
 fov = 80.0
 rotation_degrees = Vector3(-30, 0, 0)
 
-[node name="CameraViewport" type="SubViewport" parent="Drone"]
-size = Vector2i(1280, 720)
-own_world_3d = false
-render_target_update_mode = 3
-
-[node name="ViewportCam" type="Camera3D" parent="Drone/CameraViewport"]
+[node name="MainCamera" type="Camera3D" parent="."]
 fov = 80.0
-rotation_degrees = Vector3(-30, 0, 0)
-
-[node name="CameraDisplay" type="CanvasLayer" parent="."]
-script = ExtResource("2_stream")
-
-[node name="TextureRect" type="TextureRect" parent="CameraDisplay"]
-anchor_right = 1.0
-anchor_bottom = 1.0
-stretch_mode = 5
+current = true
 
 [node name="ViewportStreamer" type="Node" parent="."]
 script = ExtResource("3_vstream")
