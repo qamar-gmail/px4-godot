@@ -4,8 +4,12 @@ set -e
 
 PX4_DIR=${PX4_DIR:-"$HOME/PX4-Autopilot"}
 GODOT_BIN=${GODOT_BIN:-"godot"}
-GODOT_PROJECT="$(cd "$(dirname "$0")" && pwd)/new-game-project"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+GODOT_PROJECT="$SCRIPT_DIR/new-game-project"
 MEDIAMTX_BIN=${MEDIAMTX_BIN:-"mediamtx"}
+
+# add ~/.local/bin to PATH in case mediamtx was installed there by setup.sh
+export PATH="$HOME/.local/bin:$PATH"
 
 cleanup() {
   echo "[launch] shutting down..."
@@ -15,7 +19,7 @@ trap cleanup EXIT
 
 # 1. mediamtx RTSP server
 echo "[1/5] Starting mediamtx RTSP server..."
-"$MEDIAMTX_BIN" &
+"$MEDIAMTX_BIN" "$SCRIPT_DIR/mediamtx.yml" &
 sleep 2
 
 # 2. PX4 SITL + Gazebo

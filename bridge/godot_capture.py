@@ -15,6 +15,7 @@ import sys
 import time
 
 import mss
+from mss import MSS as MSSClass
 import numpy as np
 
 
@@ -60,13 +61,18 @@ def main() -> None:
         args.rtsp_url,
     ]
 
+    import os
+    if not os.environ.get("DISPLAY"):
+        print("[capture] ERROR: $DISPLAY not set — run inside a desktop session")
+        sys.exit(1)
+
     proc = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE)
     interval = 1.0 / 30.0
 
     print(f"[capture] streaming to {args.rtsp_url}")
     print("[capture] looking for 'px4-godot' window ...")
 
-    with mss.mss() as sct:
+    with MSSClass() as sct:
         monitor = None
         while True:
             t0 = time.time()

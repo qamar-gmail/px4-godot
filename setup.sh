@@ -24,6 +24,7 @@ echo "[setup] ensure $INSTALL_DIR is in your PATH"
 
 # Python deps
 echo "[setup] installing Python bridge dependencies..."
-pip install -r "$(dirname "$0")/bridge/requirements.txt"
+pip install --break-system-packages -r "$(dirname "$0")/bridge/requirements.txt" 2>/dev/null || \
+  pip3 install --break-system-packages -r "$(dirname "$0")/bridge/requirements.txt"
 
 echo "[setup] done."
