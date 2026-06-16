@@ -1,0 +1,4 @@
+pymavlink
+mss
+numpy
+opencv-python-headless
