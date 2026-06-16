@@ -2,7 +2,7 @@
 # PX4 + Gazebo + Godot + QGC video streaming launcher
 set -e
 
-PX4_DIR=${PX4_DIR:-"$HOME/PX4-Autopilot"}
+PX4_DIR=${PX4_DIR:-"$HOME/dev/PX4-Autopilot"}
 GODOT_BIN=${GODOT_BIN:-"godot"}
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 GODOT_PROJECT="$SCRIPT_DIR/new-game-project"
