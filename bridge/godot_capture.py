@@ -24,6 +24,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--width", type=int, default=1280)
     p.add_argument("--height", type=int, default=720)
     p.add_argument("--rtsp-url", default="rtsp://localhost:8554/drone")
+    p.add_argument("--udp-port", type=int, default=5600,
+                   help="Also send RTP/H264 to this UDP port for QGC UDP mode")
     return p.parse_args()
 
 
@@ -58,9 +60,12 @@ def main() -> None:
         "-preset", "ultrafast",
         "-tune", "zerolatency",
         "-pix_fmt", "yuv420p",
-        "-f", "rtsp",
-        "-rtsp_transport", "udp",
-        args.rtsp_url,
+        # output 1: RTSP → mediamtx (for VLC / QGC RTSP mode)
+        "-f", "rtsp", "-rtsp_transport", "udp", args.rtsp_url,
+        # output 2: RTP/H264 UDP → QGC UDP H.264 mode on port 5600
+        "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
+        "-pix_fmt", "yuv420p",
+        "-f", "rtp", f"rtp://127.0.0.1:{args.udp_port}",
     ]
 
     import os
