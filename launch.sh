@@ -40,7 +40,7 @@ sleep 3
 
 # 4. Godot world
 echo "[4/5] Starting Godot world..."
-"$GODOT_BIN" --path "$GODOT_PROJECT" --scene scenes/drone_world.tscn &
+"$GODOT_BIN" --path "$GODOT_PROJECT" --scene scenes/drone_world.tscn -- &
 sleep 5
 
 # 5. Camera capture + RTSP stream

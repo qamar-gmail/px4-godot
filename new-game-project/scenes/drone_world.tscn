@@ -1,17 +1,21 @@
-[gd_scene load_steps=8 format=3 uid="uid://drone_world"]
+[gd_scene load_steps=9 format=3 uid="uid://drone_world"]
 
 [ext_resource type="Script" path="res://scripts/drone_controller.gd" id="1_ctrl"]
 [ext_resource type="Script" path="res://scripts/camera_streamer.gd" id="2_stream"]
+[ext_resource type="Script" path="res://scripts/viewport_streamer.gd" id="3_vstream"]
 
 [sub_resource type="Environment" id="1_env"]
 background_mode = 2
-sky_horizon_color = Color(0.6, 0.7, 0.9, 1)
+sky_horizon_color = Color(0.55, 0.65, 0.85, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.4, 0.45, 0.5, 1)
+ambient_light_energy = 0.4
 
 [sub_resource type="BoxMesh" id="2_ground"]
-size = Vector3(2000, 0.1, 2000)
+size = Vector3(2000, 0.2, 2000)
 
 [sub_resource type="BoxShape3D" id="3_groundshape"]
-size = Vector3(2000, 0.1, 2000)
+size = Vector3(2000, 0.2, 2000)
 
 [sub_resource type="BoxMesh" id="4_dronebody"]
 size = Vector3(0.5, 0.1, 0.5)
@@ -25,45 +29,82 @@ size = Vector3(0.05, 0.05, 0.4)
 environment = SubResource("1_env")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.707, -0.5, 0.5, 0, 0.707, 0.707, -0.707, -0.5, 0.5, 0, 50, 0)
+transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 0, 80, 0)
+light_color = Color(1.0, 0.95, 0.85, 1)
+light_energy = 1.5
 shadow_enabled = true
 
 [node name="Ground" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
 
 [node name="GroundMesh" type="MeshInstance3D" parent="Ground"]
 mesh = SubResource("2_ground")
+surface_material_override/0 = null
 
 [node name="GroundCollider" type="CollisionShape3D" parent="Ground"]
 shape = SubResource("3_groundshape")
 
-[node name="Building1" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 5, -30)
-size = Vector3(8, 10, 8)
+[node name="Buildings" type="Node3D" parent="."]
 
-[node name="Building2" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 3, -20)
-size = Vector3(6, 6, 6)
+[node name="TowerA" type="CSGBox3D" parent="Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 20, -25)
+size = Vector3(12, 40, 12)
+use_collision = true
 
-[node name="Building3" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 7, 10)
-size = Vector3(10, 14, 8)
+[node name="TowerB" type="CSGBox3D" parent="Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 12, -30)
+size = Vector3(10, 24, 14)
+use_collision = true
 
-[node name="Building4" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 4, 25)
-size = Vector3(7, 8, 7)
+[node name="BlockC" type="CSGBox3D" parent="Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 6, 10)
+size = Vector3(18, 12, 10)
+use_collision = true
 
-[node name="Building5" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 2, 40)
-size = Vector3(5, 4, 9)
+[node name="BlockD" type="CSGBox3D" parent="Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -35, 4, 20)
+size = Vector3(8, 8, 16)
+use_collision = true
 
-[node name="Building6" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 6, -50)
-size = Vector3(12, 12, 8)
+[node name="HighriseE" type="CSGBox3D" parent="Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 30, -60)
+size = Vector3(14, 60, 10)
+use_collision = true
 
-[node name="Building7" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 3, -15)
-size = Vector3(6, 6, 6)
+[node name="WarehouseF" type="CSGBox3D" parent="Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 3, -10)
+size = Vector3(30, 6, 20)
+use_collision = true
+
+[node name="SlimTowerG" type="CSGBox3D" parent="Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 18, -40)
+size = Vector3(6, 36, 6)
+use_collision = true
+
+[node name="BlockH" type="CSGBox3D" parent="Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 8, 45)
+size = Vector3(16, 16, 12)
+use_collision = true
+
+[node name="LowH" type="CSGBox3D" parent="Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 2, 55)
+size = Vector3(20, 4, 14)
+use_collision = true
+
+[node name="MedTowerI" type="CSGBox3D" parent="Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -60, 10, -50)
+size = Vector3(10, 20, 8)
+use_collision = true
+
+[node name="StubJ" type="CSGBox3D" parent="Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 70, 5, 25)
+size = Vector3(14, 10, 18)
+use_collision = true
+
+[node name="PillarK" type="CSGBox3D" parent="Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 25, -80)
+size = Vector3(8, 50, 8)
+use_collision = true
 
 [node name="Drone" type="Node3D" parent="."]
 position = Vector3(0, 1, 0)
@@ -73,7 +114,6 @@ script = ExtResource("1_ctrl")
 mesh = SubResource("4_dronebody")
 
 [node name="ArmFront" type="MeshInstance3D" parent="Drone"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 mesh = SubResource("5_arm")
 
 [node name="ArmSide" type="MeshInstance3D" parent="Drone"]
@@ -106,6 +146,7 @@ rotation_degrees = Vector3(-30, 0, 0)
 [node name="CameraViewport" type="SubViewport" parent="Drone"]
 size = Vector2i(1280, 720)
 own_world_3d = false
+render_target_update_mode = 3
 
 [node name="ViewportCam" type="Camera3D" parent="Drone/CameraViewport"]
 fov = 80.0
@@ -118,3 +159,6 @@ script = ExtResource("2_stream")
 anchor_right = 1.0
 anchor_bottom = 1.0
 stretch_mode = 5
+
+[node name="ViewportStreamer" type="Node" parent="."]
+script = ExtResource("3_vstream")

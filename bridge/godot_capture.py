@@ -1,119 +1,117 @@
-"""Screen-capture the Godot window and pipe frames to ffmpeg → mediamtx RTSP.
+"""Receive raw RGBA frames from Godot's SubViewport over TCP and pipe to ffmpeg.
 
-Finds the Godot window by title ("px4-godot"), captures it at 30 fps,
-and sends raw BGR frames to ffmpeg which outputs an RTSP stream.
+Godot runs scripts/viewport_streamer.gd which pushes frames on TCP port 5006.
+This script connects, reads width/height header + RGBA data, converts to BGR,
+and feeds ffmpeg → mediamtx RTSP + QGC UDP RTP on port 5600.
 
 Usage:
-    python3 bridge/godot_capture.py [--width W] [--height H] [--rtsp-url URL]
+    python3 bridge/godot_capture.py [--godot-host H] [--godot-port P]
+                                     [--rtsp-url URL] [--udp-port PORT]
 """
 
 from __future__ import annotations
 
 import argparse
+import socket
+import struct
 import subprocess
 import sys
 import time
 
-import mss
-from mss import MSS as MSSClass
+import cv2
 import numpy as np
 
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
+    p.add_argument("--godot-host", default="127.0.0.1")
+    p.add_argument("--godot-port", type=int, default=5006)
     p.add_argument("--width", type=int, default=1280)
     p.add_argument("--height", type=int, default=720)
     p.add_argument("--rtsp-url", default="rtsp://localhost:8554/drone")
-    p.add_argument("--udp-port", type=int, default=5600,
-                   help="Also send RTP/H264 to this UDP port for QGC UDP mode")
+    p.add_argument("--udp-port", type=int, default=5600)
     return p.parse_args()
 
 
-def find_godot_window() -> dict | None:
-    """Return mss monitor dict for the Godot window, or None if not found."""
-    try:
-        import subprocess as sp
-        out = sp.check_output(["wmctrl", "-lG"], text=True)
-        for line in out.splitlines():
-            if "px4-godot" in line.lower():
-                parts = line.split()
-                # wmctrl -lG: id desktop x y w h machine title
-                x, y, w, h = int(parts[2]), int(parts[3]), int(parts[4]), int(parts[5])
-                return {"left": x, "top": y, "width": w, "height": h}
-    except Exception:
-        pass
-    return None
+def recv_exact(sock: socket.socket, n: int) -> bytes:
+    buf = b""
+    while len(buf) < n:
+        chunk = sock.recv(n - len(buf))
+        if not chunk:
+            raise ConnectionError("Godot disconnected")
+        buf += chunk
+    return buf
+
+
+def connect_to_godot(host: str, port: int, timeout: float = 60.0) -> socket.socket:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(5)
+            s.connect((host, port))
+            s.settimeout(None)
+            print(f"[capture] connected to Godot on {host}:{port}")
+            return s
+        except OSError:
+            print(f"[capture] waiting for Godot on {host}:{port} ...")
+            time.sleep(2)
+    raise RuntimeError(f"Could not connect to Godot after {timeout}s")
+
+
+def make_ffmpeg(W: int, H: int, rtsp_url: str, udp_port: int) -> subprocess.Popen:
+    cmd = [
+        "ffmpeg", "-y", "-loglevel", "warning",
+        "-f", "rawvideo", "-pixel_format", "bgr24",
+        "-video_size", f"{W}x{H}", "-framerate", "30",
+        "-i", "pipe:0",
+        # output 1: RTSP → mediamtx
+        "-c:v", "libx264", "-preset", "ultrafast",
+        "-tune", "zerolatency", "-pix_fmt", "yuv420p",
+        "-f", "rtsp", "-rtsp_transport", "udp", rtsp_url,
+        # output 2: RTP/UDP → QGC port 5600
+        "-c:v", "libx264", "-preset", "ultrafast",
+        "-tune", "zerolatency", "-pix_fmt", "yuv420p",
+        "-f", "rtp", f"rtp://127.0.0.1:{udp_port}",
+    ]
+    return subprocess.Popen(cmd, stdin=subprocess.PIPE)
 
 
 def main() -> None:
     args = parse_args()
     W, H = args.width, args.height
 
-    ffmpeg_cmd = [
-        "ffmpeg", "-y",
-        "-f", "rawvideo",
-        "-pixel_format", "bgr24",
-        "-video_size", f"{W}x{H}",
-        "-framerate", "30",
-        "-i", "pipe:0",
-        "-c:v", "libx264",
-        "-preset", "ultrafast",
-        "-tune", "zerolatency",
-        "-pix_fmt", "yuv420p",
-        # output 1: RTSP → mediamtx (for VLC / QGC RTSP mode)
-        "-f", "rtsp", "-rtsp_transport", "udp", args.rtsp_url,
-        # output 2: RTP/H264 UDP → QGC UDP H.264 mode on port 5600
-        "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
-        "-pix_fmt", "yuv420p",
-        "-f", "rtp", f"rtp://127.0.0.1:{args.udp_port}",
-    ]
+    print(f"[capture] will stream to {args.rtsp_url} and UDP {args.udp_port}")
 
-    import os
-    if not os.environ.get("DISPLAY"):
-        # try common fallback
-        for d in (":0", ":1"):
-            import subprocess as _sp
-            if _sp.run(["xdpyinfo", "-display", d], capture_output=True).returncode == 0:
-                os.environ["DISPLAY"] = d
-                break
-    if not os.environ.get("DISPLAY"):
-        print("[capture] ERROR: no X display found — run inside a desktop session")
-        sys.exit(1)
+    while True:
+        try:
+            godot = connect_to_godot(args.godot_host, args.godot_port)
+        except RuntimeError as e:
+            print(f"[capture] {e}, retrying...")
+            time.sleep(5)
+            continue
 
-    proc = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE)
-    interval = 1.0 / 30.0
+        ffmpeg = make_ffmpeg(W, H, args.rtsp_url, args.udp_port)
 
-    print(f"[capture] streaming to {args.rtsp_url}")
-    print("[capture] looking for 'px4-godot' window ...")
+        try:
+            while True:
+                # read header: width (4B LE) + height (4B LE)
+                hdr = recv_exact(godot, 8)
+                w, h = struct.unpack_from("<II", hdr)
+                raw = recv_exact(godot, w * h * 4)  # RGBA
 
-    with MSSClass() as sct:
-        monitor = None
-        while True:
-            t0 = time.time()
+                # RGBA → BGR, resize if needed
+                frame = np.frombuffer(raw, dtype=np.uint8).reshape((h, w, 4))
+                bgr = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
+                if w != W or h != H:
+                    bgr = cv2.resize(bgr, (W, H))
 
-            if monitor is None:
-                monitor = find_godot_window()
-                if monitor is None:
-                    # ponytail: fall back to primary monitor until window appears
-                    monitor = sct.monitors[1]
-                    print("[capture] Godot window not found, capturing primary monitor")
+                ffmpeg.stdin.write(bgr.tobytes())
 
-            frame = np.array(sct.grab(monitor))[:, :, :3]  # drop alpha → BGR
-            # resize if captured monitor doesn't match target resolution
-            if frame.shape[1] != W or frame.shape[0] != H:
-                import cv2
-                frame = cv2.resize(frame, (W, H))
-
-            try:
-                proc.stdin.write(frame.tobytes())
-            except BrokenPipeError:
-                print("[capture] ffmpeg pipe closed, exiting")
-                sys.exit(1)
-
-            elapsed = time.time() - t0
-            sleep = interval - elapsed
-            if sleep > 0:
-                time.sleep(sleep)
+        except (ConnectionError, BrokenPipeError) as e:
+            print(f"[capture] connection lost: {e}, reconnecting...")
+            ffmpeg.stdin.close()
+            ffmpeg.wait()
 
 
 if __name__ == "__main__":
