@@ -2,8 +2,8 @@ extends Node3D
 
 var udp := PacketPeerUDP.new()
 
-# ViewportCam mirrors DroneCamera so the SubViewport shows the drone's POV
 @onready var viewport_cam: Camera3D = $"CameraViewport/ViewportCam"
+@onready var cam_mount: Node3D = $"CameraMount"
 @onready var drone_cam: Camera3D = $"CameraMount/DroneCamera"
 
 func _ready() -> void:
@@ -20,6 +20,8 @@ func _process(_delta: float) -> void:
 		position = Vector3(data["x"], data["z"], -data["y"])
 		rotation = Vector3(data["roll"], -data["yaw"], -data["pitch"])
 
-	# sync viewport camera to match drone's world transform
+	# ViewportCam lives inside SubViewport which has own_world_3d=false, so global_transform
+	# is in the shared world space — copy DroneCamera's world pose directly.
 	if viewport_cam and drone_cam:
-		viewport_cam.global_transform = drone_cam.global_transform
+		viewport_cam.global_position = drone_cam.global_position
+		viewport_cam.global_rotation = drone_cam.global_rotation
