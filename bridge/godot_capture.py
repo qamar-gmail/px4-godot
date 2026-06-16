@@ -57,13 +57,22 @@ def main() -> None:
         "-c:v", "libx264",
         "-preset", "ultrafast",
         "-tune", "zerolatency",
+        "-pix_fmt", "yuv420p",
         "-f", "rtsp",
+        "-rtsp_transport", "udp",
         args.rtsp_url,
     ]
 
     import os
     if not os.environ.get("DISPLAY"):
-        print("[capture] ERROR: $DISPLAY not set — run inside a desktop session")
+        # try common fallback
+        for d in (":0", ":1"):
+            import subprocess as _sp
+            if _sp.run(["xdpyinfo", "-display", d], capture_output=True).returncode == 0:
+                os.environ["DISPLAY"] = d
+                break
+    if not os.environ.get("DISPLAY"):
+        print("[capture] ERROR: no X display found — run inside a desktop session")
         sys.exit(1)
 
     proc = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE)

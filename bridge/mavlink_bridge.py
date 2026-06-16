@@ -28,10 +28,20 @@ def parse_args() -> argparse.Namespace:
 def connect(url: str):
     print(f"[bridge] connecting to {url} ...")
     master = mavutil.mavlink_connection(url)
-    print("[bridge] waiting for heartbeat ...")
-    master.wait_heartbeat()
-    print(f"[bridge] heartbeat OK (sys={master.target_system})")
-    return master
+    # Send heartbeats first so PX4 learns our address and starts sending back.
+    print("[bridge] priming PX4 with heartbeats, waiting for response ...")
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        master.mav.heartbeat_send(
+            mavutil.mavlink.MAV_TYPE_GCS,
+            mavutil.mavlink.MAV_AUTOPILOT_INVALID,
+            0, 0, 0,
+        )
+        msg = master.recv_match(type="HEARTBEAT", blocking=True, timeout=1)
+        if msg:
+            print(f"[bridge] heartbeat OK (sys={master.target_system})")
+            return master
+    raise RuntimeError("No heartbeat from PX4 after 30s")
 
 
 def send_heartbeat(master, last: list[float]) -> None:

@@ -1,4 +1,8 @@
-# mediamtx config — RTSP only (HLS/WebRTC/SRT disabled to avoid port conflicts)
+# mediamtx config — RTSP only for QGroundControl
 hls: no
 webrtc: no
 srt: no
+
+paths:
+  drone:
+    source: publisher
